@@ -70,7 +70,7 @@
     @keyframes glitch{0%{transform:translateY(5vh)}50%{transform:translateY(65vh)}100%{transform:translateY(5vh)}}
 
     /* Camada vermelha exibida no erro */
-    .fail-overlay{position:fixed;inset:0;background:rgba(120,0,0,0.96);z-index:1000;display:flex;align-items:center;justify-content:center;flex-direction:column}
+    .fail-overlay{position:fixed;inset:0;background:rgba(228, 0, 0, 0.96);z-index:1000;display:flex;align-items:center;justify-content:center;flex-direction:column}
     .fail-overlay img{width:48vh;max-width:680px;opacity:0.95;filter:contrast(1.4) saturate(1.6) drop-shadow(0 12px 40px rgba(120,0,0,0.6))}
 
     /* Aparência da página 404 */
@@ -181,7 +181,7 @@
     }
 
     function triggerFail(){
-      // overlay agora usa imagem externa (substitua por img/corpse.png)
+      // overlay agora usa imagem externa
       const overlay = document.createElement('div');overlay.className='fail-overlay';
       overlay.innerHTML = `\n        <img src="img/corpse.png" alt="rosto vermelho" style="width:70vh;max-width:800px;opacity:0.95;filter:contrast(1.4) saturate(1.6) drop-shadow(0 12px 40px rgba(120,0,0,0.6));"/>\n      `;
       document.body.appendChild(overlay);
@@ -192,7 +192,7 @@
       document.body.style.transition='filter .2s ease, background .15s ease';
       document.body.style.filter='grayscale(0) contrast(1.4) saturate(1.6)';
 
-      // tocar arquivo de áudio externo (substitua por audio/BLINK.mp3)
+      // tocar arquivo de áudio externo
       try{
         const audio = new Audio('audio/BLINK.mp3');
         audio.volume = 1.0;
@@ -248,7 +248,7 @@
       noiseOffset += 1;
     }
 
-    /* Partículas (neve suave, agora mais visíveis) */
+    /* Partículas */
     const particles = [];
     function initParticles(){
       particles.length = 0;
@@ -282,7 +282,6 @@
       if(document.hidden){ cancelAnimationFrame(raf); } else { tick(); }
     });
 
-    // preencher placeholder com dica em português (não obrigatório, só estética)
     pwInput.placeholder = '// ??? //';
   </script>
 </body>
