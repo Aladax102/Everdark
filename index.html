@@ -20,6 +20,7 @@
       position:relative;
     }
 
+
     /* Estética de baixa resolução / estilo PS2 */
     .scene{
       width:100%;height:100%;
@@ -116,6 +117,12 @@
         return s.trim().toLowerCase();
       }
     }
+
+    window.addEventListener("pageshow", function (event) {
+  if (event.persisted) {
+    location.reload();
+  }
+});
 
     const expected = normalizeText('sob o juramento do todo sombrio');
 
