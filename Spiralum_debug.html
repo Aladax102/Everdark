@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Spiralum</title>
+  <style>
+    /* === Reset e base === */
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;background:#000;color:#fff;font-family:Inter, -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial}
+    a{color:inherit}
+
+    /* === Layout principal === */
+    .stage{position:fixed;inset:0;overflow:hidden}
+
+    /* Background GIF com filtro escuro (preto e branco) */
+    .bg{
+      position:fixed;inset:0;background-size:cover;background-position:center;z-index:0;filter:grayscale(100%);
+    }
+    .bg::before{ /* camada de escurecimento */
+      content:'';position:absolute;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:brightness(.25);
+    }
+
+    /* Canvas de partículas espiral (sobre o bg) */
+    #particles{position:fixed;left:0;top:0;width:100%;height:100%;z-index:1;pointer-events:none;opacity:1} /* cobre todo o site */
+
+    /* Conteúdo central (mão + símbolo) */
+    .center-wrap{position:fixed;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;pointer-events:none} /* fix: forçar centro absoluto */
+    .center{width:360px;max-width:40vmin;display:flex;align-items:center;justify-content:center;position:relative;pointer-events:auto} /* centro absoluto e responsivo */
+    .center img{display:block;width:100%;height:auto;max-width:46vmin;mix-blend-mode:normal} /* imagem ajustada ao centro */
+#hand{position:relative;z-index:3;display:block;max-width:46vmin;animation:floatHand 6s ease-in-out infinite}
+#symbol{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:30%;mix-blend-mode:normal;pointer-events:none;z-index:4;animation:pulseSymbol 3.6s ease-in-out infinite}
+
+@keyframes floatHand{0%{transform:translateY(-2px)}50%{transform:translateY(4px)}100%{transform:translateY(-2px)}}
+@keyframes pulseSymbol{0%{transform:translate(-50%,-50%) scale(0.98)}50%{transform:translate(-50%,-50%) scale(1.03)}100%{transform:translate(-50%,-50%) scale(0.98)}}
+    #symbol{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:38%;mix-blend-mode:normal;pointer-events:none}
+
+    /* Texto e controle do site */
+    .ui-hidden{opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s}
+
+    /* Tela de intro (full-screen) */
+    #intro{position:fixed;inset:0;z-index:10;background:linear-gradient(180deg,rgba(0,0,0,1),rgba(0,0,0,.95));display:flex;align-items:center;justify-content:center;cursor:pointer}
+    #intro .content{max-width:75ch;padding:2rem;text-align:center}
+    #intro h1{font-weight:600;letter-spacing:0.06em;font-size:clamp(18px,3.2vw,36px);line-height:1.05}
+    #intro .sub{margin-top:.9rem;opacity:.6;font-size:14px}
+    #intro .reveal-img{margin-top:1.2rem;max-width:420px;opacity:0;transition:opacity .6s ease,transform .6s;transform:translateY(6px)}
+    #intro .question{margin-top:1.2rem;font-size:16px;opacity:0;transition:opacity .45s ease}
+
+    /* controle de foco minimal */
+    button{background:none;border:1px solid rgba(255,255,255,0.06);color:inherit;padding:.6rem .9rem;border-radius:8px}
+
+    /* tela principal: preto e branco, tipografia reduzida, sem distração */
+    .main-ui{position:fixed;left:0;top:0;right:0;bottom:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:40px;pointer-events:none}
+    .copyright{font-size:12px;opacity:.45;pointer-events:none}
+
+    /* pequenas transições */
+    .hidden{display:none}
+
+    /* Responsivo */
+    @media (max-width:600px){.center{max-width:70vmin}}
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <!-- Background GIF (monochrome via CSS filter). Substitua pelo seu GIF -->
+    <div id="bg" class="bg" style="background-image:url('img/Moons.gif')"></div>
+
+    <!-- Canvas para partículas em espiral -->
+    <canvas id="particles"></canvas>
+
+    <!-- Conteúdo central (mão + símbolo separado) -->
+    <div class="center-wrap">
+      <div class="center" id="centerEl">
+        <!-- Imagem da mão (sem o símbolo). Deve ter fundo transparente. -->
+        <img id="hand" src="img/dreams_hand.png" alt="mão com símbolo" />
+        <!-- Símbolo separado (pode ser trocado por puzzle) -->
+        <img id="symbol" src="img/dogma003.png" alt="símbolo" />
+      </div>
+    </div>
+
+    <!-- UI principal (pequeno texto no rodapé) -->
+    
+    </div>
+
+    <!-- Intro (fase de abertura) -->
+    <div id="intro">
+      <div class="content">
+        <h1 id="intro-text">o vazio chama.</h1>
+        <img id="intro-image" src="intro-image.png" alt="" style="display:none" />
+        <div id="intro-question" style="display:none">O que resta quando tudo cala?</div>
+      </div>
+    </div>
+  </div>
+
+
+  </div>
+
+  <!-- Áudios:  
+       - intro-sound.mp3 : som grave que toca quando a primeira interação acontece e acompanha a aparição da imagem
+       - transition.mp3  : (opcional) som curto de transição quando a intro termina
+       - bg-audio.mp3    : áudio de fundo que deve começar apenas quando a intro terminar
+  -->
+  <audio id="audio-intro" preload="auto" src="intro-sound.mp3"></audio>
+  <audio id="audio-trans" preload="auto" src="transition.mp3"></audio>
+  <audio id="audio-bg" preload="auto" loop src="bg-audio.mp3"></audio>
+
+  <script>
+    /* === Controle da intro (3 cliques) === */
+    const intro = document.getElementById('intro');
+    const introImage = document.getElementById('intro-image');
+    const introQuestion = document.getElementById('intro-question');
+    const introText = document.getElementById('intro-text');
+    const audioIntro = document.getElementById('audio-intro');
+    const audioTrans = document.getElementById('audio-trans');
+    const audioBg = document.getElementById('audio-bg');
+
+    let step = 0; // 0 = esperando 1º clique
+
+    // pequenos utilitários
+    function fadeIn(el, delay = 0){el.style.transition='opacity .6s ease,transform .6s ease';setTimeout(()=>{el.style.opacity=1;el.style.transform='translateY(0)';},delay)}
+    function fadeOut(el){el.style.opacity=0;el.style.transform='translateY(6px)'}
+
+    // permitir também ativar por toque em dispositivos
+    intro.addEventListener('click', async (e)=>{
+      step++;
+      if(step===1){
+        // 1º clique: toca som e substitui frase pela imagem (imediato)
+        try{audioIntro.currentTime=0; await audioIntro.play();}catch(e){}
+        introText.style.display = 'none';
+        introImage.style.display = 'block';
+      } else if(step===2){
+        // 2º clique: substitui imagem pela pergunta (imediato)
+        introImage.style.display = 'none';
+        introQuestion.style.display = 'block';
+      } else if(step===3){
+        // 3º clique: remove a intro e inicia o áudio de fundo
+        introQuestion.style.display = 'none';
+        intro.style.display = 'none';
+        try{audioBg.currentTime=0; await audioBg.play();}catch(e){}
+      }
+    });
+
+    /* === Canvas de partículas - espiral lenta === */
+    const canvas = document.getElementById('particles');
+    const ctx = canvas.getContext('2d');
+    let W = canvas.width = innerWidth; let H = canvas.height = innerHeight;
+
+    // gerar partículas em uma espiral inicial
+    const N = 420; // mais partículas, mais sutis
+    const particles = [];
+
+    for(let i=0;i<N;i++){
+      const t = i / N;
+      const r = 6 + t * Math.max(W,H) * 0.6; // espalha até quase a borda
+      const angle = i * 0.28; // espaçamento angular base
+      particles.push({
+        baseR: r,
+        baseA: angle,
+        size: 0.4 + Math.random()*1.4,
+        offset: Math.random()*2000
+      });
+    }
+    
+
+    let start = null;
+    function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight}
+    addEventListener('resize',resize);
+
+    function draw(time){
+      if(!start) start=time; const t = (time-start)/1000;
+      ctx.clearRect(0,0,W,H);
+      // escurecer levemente (não necessário pois bg já escurecido) - manter transparência para sobrepor
+
+      // centro
+      const cx = W/2; const cy = H/2;
+
+      // desenho lento: cada partícula gira com velocidade inversamente proporcional ao seu r (mais perto = mais lenta ou mais rápida dependendo do efeito)
+      for(let i=0;i<particles.length;i++){
+        const p = particles[i];
+        // pequena oscilação radial e angular para dar vida
+        const wobble = Math.sin((t*0.2) + p.offset) * 6.0;
+        const r = p.baseR + wobble;
+        // rotação geral muito lenta
+        const rotSpeed = 0.04; // controla a rotação global
+        const a = p.baseA + t * rotSpeed * (0.7 + (i%7)/10);
+        const x = cx + Math.cos(a) * r;
+        const y = cy + Math.sin(a) * r;
+        // opacidade diminui com r
+        // tornar partículas mais escuras e sutis
+        let baseAlpha = Math.max(0.02, 0.28 - (r / (Math.max(W,H)*0.9)) );
+        const alpha = Math.max(0, baseAlpha * (0.6 + (Math.sin(p.offset + t*0.1) * 0.15)));
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+        ctx.arc(x,y,p.size,0,Math.PI*2);
+        ctx.fill();
+      }
+
+      requestAnimationFrame(draw);
+    }
+    requestAnimationFrame(draw);
+
+    /* === Trocar símbolo dinamicamente (puzzle hook) ===
+       - Para trocar o símbolo basta alterar `#symbol` src via JS:
+       document.getElementById('symbol').src = 'novo-simbolo.png'
+       - A mão (hand.png) fica separada para permitir isso. 
+    */
+
+    // Preload assets (silencioso)
+    const toPreload = ['hand.png','symbol.png','intro-image.png','bg-texture.gif','intro-sound.mp3','bg-audio.mp3','transition.mp3'];
+    toPreload.forEach(src=>{const i=new Image();i.src=src});
+
+    /* === Pequenas conveniências(não necessárias) === */
+    // Exemplo: função pública para substituir o símbolo com fade
+    window.setSymbol = function(src){
+      const el = document.getElementById('symbol');
+      el.style.transition='opacity .35s ease'; el.style.opacity=0;
+      setTimeout(()=>{el.src=src; el.style.opacity=1;},360);
+    }
+
+    // Impedir duplo toque/scroll que cause seleção
+    document.addEventListener('touchmove',e=>{if(intro.classList.contains('hidden')) return; e.preventDefault();},{passive:false});
+  </script>
+</body>
+</html>
