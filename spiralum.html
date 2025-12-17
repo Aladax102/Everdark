@@ -18,18 +18,21 @@
       position:fixed;inset:0;background-size:cover;background-position:center;z-index:0;filter:grayscale(100%);
     }
     .bg::before{ /* camada de escurecimento */
-      content:'';position:absolute;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:brightness(.35);
+      content:'';position:absolute;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:brightness(.25);
     }
 
     /* Canvas de partículas espiral (sobre o bg) */
-    #particles{position:fixed;left:0;top:0;width:100%;height:100%;z-index:1;pointer-events:none}
+    #particles{position:fixed;left:0;top:0;width:100%;height:100%;z-index:1;pointer-events:none;opacity:1} /* cobre todo o site */
 
     /* Conteúdo central (mão + símbolo) */
-    .center-wrap{position:relative;z-index:3;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
-    .center{
-      width:360px;max-width:40vmin;display:block;position:relative;pointer-events:auto
-    }
-    .center img{display:block;width:100%;height:auto}
+    .center-wrap{position:fixed;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;pointer-events:none} /* fix: forçar centro absoluto */
+    .center{width:360px;max-width:40vmin;display:flex;align-items:center;justify-content:center;position:relative;pointer-events:auto} /* centro absoluto e responsivo */
+    .center img{display:block;width:100%;height:auto;max-width:46vmin;mix-blend-mode:normal} /* imagem ajustada ao centro */
+#hand{position:relative;z-index:3;display:block;max-width:46vmin;animation:floatHand 6s ease-in-out infinite}
+#symbol{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:30%;mix-blend-mode:normal;pointer-events:none;z-index:4;animation:pulseSymbol 3.6s ease-in-out infinite}
+
+@keyframes floatHand{0%{transform:translateY(-2px)}50%{transform:translateY(4px)}100%{transform:translateY(-2px)}}
+@keyframes pulseSymbol{0%{transform:translate(-50%,-50%) scale(0.98)}50%{transform:translate(-50%,-50%) scale(1.03)}100%{transform:translate(-50%,-50%) scale(0.98)}}
     #symbol{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:38%;mix-blend-mode:normal;pointer-events:none}
 
     /* Texto e controle do site */
@@ -60,7 +63,7 @@
 <body>
   <div class="stage">
     <!-- Background GIF (monochrome via CSS filter). Substitua pelo seu GIF -->
-    <div id="bg" class="bg" style="background-image:url('bg-texture.gif')"></div>
+    <div id="bg" class="bg" style="background-image:url('img/Moons.gif')"></div>
 
     <!-- Canvas para partículas em espiral -->
     <canvas id="particles"></canvas>
@@ -76,8 +79,7 @@
     </div>
 
     <!-- UI principal (pequeno texto no rodapé) -->
-    <div class="main-ui">
-      <div class="copyright">Spiralum — / /</div>
+    
     </div>
 
     <!-- Intro (fase de abertura) -->
@@ -93,7 +95,11 @@
 
   </div>
 
-
+  <!-- Áudios:  
+       - intro-sound.mp3 : som grave que toca quando a primeira interação acontece e acompanha a aparição da imagem
+       - transition.mp3  : (opcional) som curto de transição quando a intro termina
+       - bg-audio.mp3    : áudio de fundo que deve começar apenas quando a intro terminar
+  -->
   <audio id="audio-intro" preload="auto" src="intro-sound.mp3"></audio>
   <audio id="audio-trans" preload="auto" src="transition.mp3"></audio>
   <audio id="audio-bg" preload="auto" loop src="bg-audio.mp3"></audio>
@@ -140,20 +146,21 @@
     let W = canvas.width = innerWidth; let H = canvas.height = innerHeight;
 
     // gerar partículas em uma espiral inicial
-    const N = 220; // número de partículas
+    const N = 420; // mais partículas, mais sutis
     const particles = [];
 
     for(let i=0;i<N;i++){
       const t = i / N;
-      const r = 12 + t * Math.min(W,H) * 0.45; // raio crescente
-      const angle = i * 0.35; // espaçamento angular base
+      const r = 6 + t * Math.max(W,H) * 0.6; // espalha até quase a borda
+      const angle = i * 0.28; // espaçamento angular base
       particles.push({
         baseR: r,
         baseA: angle,
-        size: 0.6 + Math.random()*2.2,
+        size: 0.4 + Math.random()*1.4,
         offset: Math.random()*2000
       });
     }
+    
 
     let start = null;
     function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight}
@@ -179,8 +186,9 @@
         const x = cx + Math.cos(a) * r;
         const y = cy + Math.sin(a) * r;
         // opacidade diminui com r
-        const alpha = Math.max(0.06, 1 - (r / (Math.min(W,H)*0.6)));
-
+        // tornar partículas mais escuras e sutis
+        let baseAlpha = Math.max(0.02, 0.28 - (r / (Math.max(W,H)*0.9)) );
+        const alpha = Math.max(0, baseAlpha * (0.6 + (Math.sin(p.offset + t*0.1) * 0.15)));
         ctx.beginPath();
         ctx.fillStyle = `rgba(255,255,255,${alpha})`;
         ctx.arc(x,y,p.size,0,Math.PI*2);
@@ -191,7 +199,12 @@
     }
     requestAnimationFrame(draw);
 
-    
+    /* === Trocar símbolo dinamicamente (puzzle hook) ===
+       - Para trocar o símbolo basta alterar `#symbol` src via JS:
+       document.getElementById('symbol').src = 'novo-simbolo.png'
+       - A mão (hand.png) fica separada para permitir isso. 
+    */
+
     // Preload assets (silencioso)
     const toPreload = ['hand.png','symbol.png','intro-image.png','bg-texture.gif','intro-sound.mp3','bg-audio.mp3','transition.mp3'];
     toPreload.forEach(src=>{const i=new Image();i.src=src});
